@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 12px 14px 14px;
+    font: 11px/1.4 Inter, -apple-system, system-ui, sans-serif;
+    color: var(--figma-color-text, #222);
+    background: var(--figma-color-bg, #fff);
+  }
+  h1 { font-size: 12px; margin: 0 0 10px; font-weight: 600; letter-spacing: .01em; }
+  .preview {
+    width: 100%; aspect-ratio: 1 / 1; border-radius: 10px; overflow: hidden;
+    background: #0a0a0a; margin-bottom: 12px; display: block;
+  }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+  .grid3 { grid-template-columns: 1fr 1fr 1fr; }
+  label { display: flex; flex-direction: column; gap: 3px; color: var(--figma-color-text-secondary, #666); }
+  input[type=number], input[type=text] {
+    width: 100%; padding: 5px 6px; border-radius: 4px;
+    border: 1px solid var(--figma-color-border, #e5e5e5);
+    background: var(--figma-color-bg-secondary, #f5f5f5);
+    color: var(--figma-color-text, #222); font: inherit;
+  }
+  input[type=number]:focus, input[type=text]:focus { outline: 1px solid var(--figma-color-border-selected, #0d99ff); }
+  input[type=color] { width: 100%; height: 26px; padding: 0 2px; border: 1px solid var(--figma-color-border, #e5e5e5); border-radius: 4px; background: transparent; }
+  .section { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--figma-color-border, #e5e5e5); }
+  .section h2 { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; margin: 0 0 6px; color: var(--figma-color-text-tertiary, #999); font-weight: 600; }
+  .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; }
+  .checks label { flex-direction: row; align-items: center; gap: 6px; color: var(--figma-color-text, #222); }
+  .actions { display: flex; gap: 8px; margin-top: 12px; }
+  button {
+    flex: 1; padding: 8px 10px; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer;
+    border: 1px solid var(--figma-color-border, #e5e5e5);
+    background: var(--figma-color-bg, #fff); color: var(--figma-color-text, #222);
+  }
+  button.primary { background: var(--figma-color-bg-brand, #0d99ff); color: var(--figma-color-text-onbrand, #fff); border-color: transparent; }
+  .hint { margin-top: 8px; color: var(--figma-color-text-tertiary, #999); min-height: 14px; }
+  input[type=range] { width: 100%; }
+</style>
+</head>
+<body>
+  <h1>Bento Grid Generator</h1>
+  <svg id="preview" class="preview" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+
+  <div class="grid grid3">
+    <label>Columnas <input id="cols" type="number" min="1" max="24" value="4" /></label>
+    <label>Filas <input id="rows" type="number" min="1" max="24" value="4" /></label>
+    <label>Bloques (n) <input id="blocks" type="number" min="1" value="7" /></label>
+  </div>
+
+  <div class="section">
+    <h2>Tamaño</h2>
+    <div class="grid">
+      <label>Ancho del frame <input id="frameWidth" type="number" min="1" value="1200" /></label>
+      <label>Alto del frame <input id="frameHeight" type="number" min="1" value="1200" /></label>
+      <label>Gap <input id="gap" type="number" min="0" value="24" /></label>
+      <label>Padding del frame <input id="padding" type="number" min="0" value="48" /></label>
+      <label>Padding de bloque <input id="cardPadding" type="number" min="0" value="24" /></label>
+      <label>Radio de bloque <input id="radius" type="number" min="0" value="24" /></label>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Aleatoriedad</h2>
+    <div class="grid grid3">
+      <label>Máx. span cols <input id="maxColSpan" type="number" min="0" value="0" title="0 = sin límite" /></label>
+      <label>Máx. span filas <input id="maxRowSpan" type="number" min="0" value="0" title="0 = sin límite" /></label>
+      <label>Semilla <input id="seed" type="text" placeholder="aleatoria" /></label>
+    </div>
+    <label style="margin-top:6px"><span>Variedad de tamaños (<span id="varietyVal">1.00</span>)</span>
+      <input id="variety" type="range" min="0" max="3" step="0.25" value="1" />
+    </label>
+  </div>
+
+  <div class="section">
+    <h2>Estilo</h2>
+    <div class="grid">
+      <label>Color de bloques <input id="fillColor" type="color" value="#b9c26e" /></label>
+      <label>Fondo <input id="bgColor" type="color" value="#0a0a0a" /></label>
+    </div>
+    <div class="checks" style="margin-top:8px">
+      <label><input id="nativeGrid" type="checkbox" checked /> Grid auto layout</label>
+      <label><input id="guides" type="checkbox" checked /> Guías (layout grid)</label>
+      <label><input id="labels" type="checkbox" checked /> Etiquetas n · w×h</label>
+      <label><input id="varyTones" type="checkbox" /> Variar tonos</label>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button id="shuffle">↻ Nueva variante</button>
+    <button id="generate" class="primary">Generar en Figma</button>
+  </div>
+  <div id="hint" class="hint"></div>
+
+<script>
+  const ids = ['cols','rows','blocks','frameWidth','frameHeight','gap','padding','cardPadding','radius',
+               'maxColSpan','maxRowSpan','seed','variety','fillColor','bgColor','nativeGrid','guides','labels','varyTones'];
+  const $ = (id) => document.getElementById(id);
+
+  function readParams() {
+    const p = {};
+    for (const id of ids) {
+      const el = $(id);
+      p[id] = el.type === 'checkbox' ? el.checked : el.value;
+    }
+    return p;
+  }
+  function writeParams(p) {
+    if (!p) return;
+    for (const id of ids) {
+      const el = $(id); if (!(id in p)) continue;
+      if (el.type === 'checkbox') el.checked = !!p[id]; else el.value = p[id];
+    }
+    $('varietyVal').textContent = Number($('variety').value).toFixed(2);
+  }
+
+  function send(type) { parent.postMessage({ pluginMessage: { type, params: readParams() } }, '*'); }
+
+  // Dibuja la vista previa con el layout que calcula code.js
+  function drawPreview(layout, p) {
+    const svg = $('preview');
+    svg.style.background = p.bgColor;
+    const W = Number(p.frameWidth), H = Number(p.frameHeight);
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    const gap = Number(p.gap), pad = Number(p.padding), r = Number(p.radius);
+    const cw = (W - pad*2 - gap*(layout.cols-1)) / layout.cols;
+    const ch = (H - pad*2 - gap*(layout.rows-1)) / layout.rows;
+    let out = '';
+    layout.blocks.forEach((b, i) => {
+      const x = pad + b.c*(cw+gap), y = pad + b.r*(ch+gap);
+      const w = b.w*cw + (b.w-1)*gap, h = b.h*ch + (b.h-1)*gap;
+      out += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${p.fillColor}" opacity="${0.8 + (i%3)*0.07}"/>`;
+    });
+    if (p.guides) {
+      for (let c = 0; c <= layout.cols; c++) {
+        const x = pad + c*(cw+gap) - (c===0?0:gap);
+        out += `<line x1="${x}" y1="0" x2="${x}" y2="${H}" stroke="${p.fillColor}" stroke-opacity=".5" stroke-width="${W/600}" stroke-dasharray="${W/80} ${W/120}"/>`;
+        if (c>0 && c<layout.cols) out += `<line x1="${x+gap}" y1="0" x2="${x+gap}" y2="${H}" stroke="${p.fillColor}" stroke-opacity=".5" stroke-width="${W/600}" stroke-dasharray="${W/80} ${W/120}"/>`;
+      }
+      for (let rr = 0; rr <= layout.rows; rr++) {
+        const y = pad + rr*(ch+gap) - (rr===0?0:gap);
+        out += `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="${p.fillColor}" stroke-opacity=".5" stroke-width="${H/600}" stroke-dasharray="${H/80} ${H/120}"/>`;
+        if (rr>0 && rr<layout.rows) out += `<line x1="0" y1="${y+gap}" x2="${W}" y2="${y+gap}" stroke="${p.fillColor}" stroke-opacity=".5" stroke-width="${H/600}" stroke-dasharray="${H/80} ${H/120}"/>`;
+      }
+    }
+    svg.innerHTML = out;
+  }
+
+  onmessage = (e) => {
+    const msg = e.data.pluginMessage; if (!msg) return;
+    if (msg.type === 'restore') { writeParams(msg.params); send('preview'); }
+    if (msg.type === 'layout') {
+      drawPreview(msg.layout, readParams());
+      $('hint').textContent = (msg.layout.exact
+        ? `${msg.layout.blocks.length} bloques` 
+        : `No se alcanzaron ${msg.layout.target} bloques exactos (${msg.layout.blocks.length})`) + ` · semilla ${msg.seed}`;
+      if (!$('seed').value) $('seed').dataset.last = msg.seed;
+    }
+  };
+
+  // Cualquier cambio refresca la vista previa; el botón ↻ cambia la semilla.
+  for (const id of ids) $(id).addEventListener('input', () => {
+    if (id === 'variety') $('varietyVal').textContent = Number($('variety').value).toFixed(2);
+    send('preview');
+  });
+  $('shuffle').onclick = () => { $('seed').value = ''; send('preview'); };
+  $('generate').onclick = () => {
+    // Si la semilla está vacía, fijamos la de la última vista previa para que Figma reproduzca lo mismo que se ve.
+    if (!$('seed').value && $('seed').dataset.last) $('seed').value = $('seed').dataset.last;
+    send('generate');
+    $('seed').value = '';
+  };
+  send('preview');
+</script>
+</body>
+</html>
